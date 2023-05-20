@@ -1,0 +1,29 @@
+# Virtual environment
+venv/
+
+# Compiled Python files
+*.pyc
+__pycache__/
+
+# Logs
+*.log
+
+# Dependency directories
+node_modules/
+bower_components/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# IDE specific files and folders
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Data files and credentials
+data/
+credentials.json
