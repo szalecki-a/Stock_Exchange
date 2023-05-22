@@ -20,3 +20,10 @@ stocks_dict = {
     "NFLX": {"company_name": "Netflix, Inc.", "price": 540.20},
     "IBM": {"company_name": "IBM", "price": 140.15}
 }
+
+def display_stocks(stocks_dict):
+    print("Available stocks:")
+    for key, value in stocks_dict.items():
+        print(f"Company Name: {value['company_name']}")
+        print(f"Symbol: {key} | Price: {value['price']}")
+        print()
