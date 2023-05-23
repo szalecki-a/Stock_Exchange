@@ -40,76 +40,71 @@ def start_menu(user):
         moving_around_account(user)
     elif q1.lower() == "e":
         print("Thanks for visiting Hashira Exchange!\n Hope we'll see you soon!")
-        return
+
 
 
 #MOVING AROUND ACCOUNT
 def moving_around_account(user):
-    user.update_wallet()
-    a1 = input("Press 'W' to check your wallet, 'M' to go on market, 'H' to check your transaction history, 'B' to check your balance, 'E' to exit\n")
-    if a1.lower() == "w":
-        user.check_wallet()
-        print("\n")
-    elif a1.lower() == "m":
-        market(user)
-    elif a1.lower() == "h":
-        q = input("Do you want to see the history of purchases [p], sales [s], both [b], deposits [d] or withdrawals [w]?")
-        while q not in ["p", "s", "b", "d", "w"]:
-            print("Oops, that isn't 'p', 's', or 'b'...")
-            q = input("Press 'p' to view purchase history, 's' to view sales history or 'b' to view both, 'd' to view depostis or 'w' for withdrawals.")
-        user.check_history(q)
-        return moving_around_account(user)
-    elif a1.lower() == "b":
-        user.check_balance()
-        print("\n")
-        return moving_around_account(user)
-    elif a1.lower() == "e":
-        print("Thanks for visiting Hashira Exchange!\n Hope we'll see you soon!")
-        return
+    while True:
+        account_menu = input("Press 'W' to check your wallet, 'D' to make a deposit, 'P' to make a withdrawal, 'H' to check your transaction history, 'B' to check your balance, 'M' to go to the market, 'E' to exit\n")
+        if account_menu.lower() == "w":
+            user.check_wallet()
+        elif account_menu.lower() == "d":
+            amount = input("Specify the amount you wish to deposit: ")
+            user.make_deposit(amount)
+        elif account_menu.lower() == "p":
+            amount = input("Specify the amount you wish to withdraw: ")
+            user.make_withdrawal(amount)
+        elif account_menu.lower() == "m":
+            market(user)
+        elif account_menu.lower() == "h":
+            q = input("Do you want to see the history of purchases [p], sales [s], both [b], deposits [d], or withdrawals [w]? ")
+            while q not in ["p", "s", "b", "d", "w"]:
+                print("Oops, that isn't 'p', 's', 'b', 'd', or 'w'...")
+                q = input("Press 'p' to view purchase history, 's' to view sales history, 'b' to view both, 'd' to view deposits, or 'w' for withdrawals: ")
+            user.check_history(q)
+        elif account_menu.lower() == "b":
+            user.check_balance()
+        elif account_menu.lower() == "e":
+            print("Thanks for visiting Hashira Exchange!\nHope we'll see you soon!")
+            break
 
 
 #MOVING AROUND MARKET
 def market(user):
-    q = input("What do you want to do? Enter 'B' to buy shares, 'S' to sell shares, 'C' to check shares, 'A' to check your account or press 'E' to exit\n")
-    if q.lower() == "b":
-        again = input("Would you like to see the shares and prices? Enter y/n: ")
-        if again.lower() == "y":
-            display_stocks(stocks_dict)
-        print()
-        buy_shares(user)
-        print()
-        market(user)
-    elif q.lower() == "s":
-        user.update_wallet()
-        again = input("Would you like to see the shares and prices? Enter y/n: ")
-        if again.lower() == "y":
-            display_stocks(stocks_dict)
-        print()
-        sell_shares(user)
-        print()
-        market(user)
-    elif q.lower() == "c":
-        check_share(user)
-    elif q.lower() == "a":
-        moving_around_account(user)
-    elif q.lower() == "e":
-        print("Thanks for visiting Hashira Exchange!\n Hope we'll see you soon!")
-        return
-    else:
-      market(user)
+    while True:
+        market_menu = input("What do you want to do? Enter 'B' to buy shares, 'S' to sell shares, 'C' to check shares, 'A' to go to your account, or 'E' to exit\n")
+        if market_menu.lower() == "b":
+            again = input("Would you like to see the shares and prices? Enter y/n: ")
+            if again.lower() == "y":
+                display_stocks(stocks_dict)
+            buy_shares(user)
+        elif market_menu.lower() == "s":
+            user.update_wallet()
+            again = input("Would you like to see your wallet? Enter y/n: ")
+            if again.lower() == "y":
+                user.check_wallet()
+            sell_shares(user)
+        elif market_menu.lower() == "c":
+            check_share(user)
+        elif market_menu.lower() == "a":
+            moving_around_account(user)
+        elif market_menu.lower() == "e":
+            print("Thanks for visiting Hashira Exchange!\nHope we'll see you soon!")
+            break
 
 
 #BUY SHARES
 def buy_shares(user):
     print("Which shares would you like to buy and in what quantity?")
-    q1 = input("Enter the symbol of the shares you wish to buy\n")
-    while q1 not in stocks:
-        q1 = input("Enter a valid symbol or 'X' to exit shopping\n")
-        if q1.lower() == "x":
-            market(user)
+    shares_to_buy= input("Enter the symbol of the shares you wish to buy: ")
+    while shares_to_buy not in stocks:
+        shares_to_buy = input("Enter a valid symbol or 'X' to exit shopping: ")
+        if shares_to_buy.lower() == "x":
             break
-    q2 = input("Enter the number of shares you wish to buy:\n")
-    user.buy_shares(stocks[q1], q2)
+    if shares_to_buy.lower() != "x":
+        amount_of_shares = input("Enter the number of shares you wish to buy: ")
+        user.buy_shares(stocks[q1], amount_of_shares)
 
 
 #SELL SHARES
@@ -118,34 +113,34 @@ def sell_shares(user):
     if preview.lower() == "y":
         user.check_wallet()
     print("Which shares would you like to sell and in what quantity?")
-    q1 = input("Enter the symbol of the shares you wish to sell\n")
-    while q1 not in stocks:
-        q1 = input("Enter a valid symbol or 'X' to exit shopping\n")
-        if q1.lower() == "x":
-            market(user)
+    shares_to_sell = input("Enter the symbol of the shares you wish to sell: ")
+    while shares_to_sell not in stocks:
+        shares_to_sell = input("Enter a valid symbol or 'X' to exit shopping: ")
+        if shares_to_sell.lower() == "x":
             break
-    q2 = input("Enter the number of shares you wish to sell:\n")
-    user.sell_shares(stocks[q1], q2)
+    if shares_to_sell.lower() != "x":
+        amount_of_shares = input("Enter the number of shares you wish to sell: ")
+        user.sell_shares(stocks[shares_to_sell], amount_of_shares)
+
 
 #CHECK SHARES
 def check_share(user):
     again = input("Would you like to see the shares and prices? Enter y/n: ")
     if again.lower() == "y":
         display_stocks(stocks_dict)
-    q1 = input("Enter the symbol of the action you wish to check.\n")
-    while q1 not in stocks:
-        q1 = input("Enter a valid symbol or 'X' to exit checking")
-        if q1.lower() == "x":
-            market(user)
+    shares_to_check = input("Enter the symbol of the action you wish to check: ")
+    while shares_to_check not in stocks:
+        shares_to_check = input("Enter a valid symbol or 'X' to exit checking: ")
+        if qshares_to_check.lower() == "x":
             break
-    c_stock = stocks[q1]
-    print(c_stock)
-    print()
-    print("Purchasing ratio: " + str(c_stock.purchasing_ratio))
-    print("Sales ratio: " + str(c_stock.sales_ratio))
-    print(c_stock.generate_plot)
-    print()
-    q2 = input("Do you want to check other actions [press 'O'] or return to the menu ['press anything else']?")
-    if q2.lower() == "o":
-        check_share(user)
-    market(user)
+    if shares_to_check.lower() != "x":
+        c_stock = stocks[shares_to_check]
+        print(c_stock)
+        print()
+        print("Purchasing ratio: " + str(c_stock.purchasing_ratio))
+        print("Sales ratio: " + str(c_stock.sales_ratio))
+        print(c_stock.generate_plot)
+        print()
+        next_step = input("Do you want to check other actions [press 'O'] or return to the menu ['press anything else']? ")
+        if next_step.lower() == "o":
+            check_share(user)

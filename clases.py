@@ -14,7 +14,7 @@ class User:
         self.withdrawal_money = 0
         user_names.append(self)
 
-    def caltuale_saldo(self):
+    def calculate_saldo(self):
         self.saldo = 0
         for stock_symbol, number_of_shares in self.wallet.items():
             if stock_symbol != "USD":
@@ -26,9 +26,10 @@ class User:
                 if number_of_shares == 0 and stock_symbol != "USD"]
         for stock_to_del in to_del:
             self.wallet.pop(stock_to_del, None)
-
-    
+ 
     def buy_shares(self, stock, number_of_shares):
+        self.update_wallet()
+        self.calculate_saldo()
         number_of_shares = int(number_of_shares)
         stock_info = stocks_dict[stock.short_name]
         
@@ -46,6 +47,8 @@ class User:
 
 
     def sell_shares(self, stock, number_of_shares):
+        self.update_wallet()
+        self.calculate_saldo()
         number_of_shares = int(number_of_shares)
         stock_info = stocks_dict[stock.short_name]
 
@@ -66,8 +69,8 @@ class User:
 
 
     def check_wallet(self):
-        self.caltuale_saldo()
         self.update_wallet()
+        self.calculate_saldo()
         number_of_shares = len(self.wallet) - 1 # Substract 1 to exclude "USD" from the count
         if number_of_shares == 0:
             print(f"You have ${self.wallet['USD']} in your portfolio and no shares.")
@@ -81,8 +84,27 @@ class User:
                     stock_value = stock_price * number_of_shares
                     print(f"Company Name: {company_name} ({stock_symbol})")
                     print(f"Number of shares: {number_of_shares} | Value: {stock_value}")
-                    print()
                     print(f"The total value of your wallet is ${self.saldo}.")
+
+
+    def make_deposit(self, amount):
+        amount = int(amount)
+        self.wallet["USD"] += (amount)
+        self.invested_money += amount
+        self.transactions.append([datetime.now(), "USD", amount, amount, "D"])
+        print(f"You have deposited ${amount} into your account")
+    
+
+    def make_withdrawal(self, amount):
+        self.update_wallet()
+        amount = int(amount)
+        if  self.wallet["USD"] < amount:
+            print(f"You cannot withdraw more money from your wallet than you have (${self.wallet['USD']})")
+        else:
+            self.wallet["USD"] -= amount
+            self.withdrawal_money += amount
+            self.transactions.append([datetime.now(), "USD", amount, amount, "W"])
+            print(f"You have withdrawn ${amount} from your account")
     
 
     def check_history(self, symbol):
@@ -138,16 +160,15 @@ class User:
     
     
     def check_balance(self):
-        self.caltuale_saldo()
-        if self.invested_money > self.withdrawal_money + self.saldo:
-            print(f"Your current balance is ${self.saldo} in shares.")
-            print(f"In total, you have lost ${self.invested_money - self.withdrawal_money - self.saldo} on the tranzactions.")
-        elif self.invested_money < self.withdrawal_money + self.saldo:
-            print(f"Your current balance is ${self.saldo} in shares.")
-            print(f"In total, you have earned ${self.invested_money - self.withdrawal_money - self.saldo} on the tranzactions!")
+        self.calculate_saldo()
+        balance = self.invested_money - self.withdrawal_money - self.saldo
+        print(f"The value of your portfolio is ${self.saldo}.")
+        if balance < 0:
+            print(f"In total, you have lost ${balance} on the tranzactions (Money deposited: {self.invested_money}, Money paid out: {self.withdrawal_money}), Value of portfolio: {self.saldo}.")
+        elif balance > 0:
+            print(f"In total, you have earned ${balance} on the tranzactions! (Money deposited: {self.invested_money}, Money paid out: {self.withdrawal_money}), Value of portfolio: {self.saldo}.")
         else:
-            print(f"Your current balance is ${self.saldo} in shares.")
-            print(f"In total, you have a balance of zero on the tranzactions.")
+            print(f"In total, you have a balance of zero on the tranzactions (Money deposited: {self.invested_money}, Money paid out: {self.withdrawal_money}, Value of portfolio: {self.saldo}).")
 
 
 class Stock:
