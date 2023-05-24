@@ -1,47 +1,118 @@
 from random import uniform
+import bcrypt
+import json
+import sqlite3
+import sys
 from stocks import stocks_dict, display_stocks
-from clases import User, stocks, user_names
+from clases import User, Stock, stocks, users
 
-def courses_update(stocks_dict):
-    for key, value in stocks_dict.items():
-        stocks_dict[key]['price'] = stocks_dict[key]['price'] * uniform(0.9, 1.1)
-    print("The prices on the exchange have been updated!")
-    display_stocks(stocks_dict)
-    for stock in stocks.values():
-        stock.update_course()
+#HEAD
+def stock_exchange():
+    initialize_stocks()
+    greet()
+    start_menu()
 
 #GREETING
 def greet():
   print("Welcome to the Hashira Exchange")
   print("This project allows you to simulate stock market actions.")
 
+#MENU
+def start_menu():
+    while True:
+        print("1. Create an account")
+        print("2. Login")
+        choice = input("Enter your choice: ")
 
-#ACCOUNT CREATING
+        if choice == "1":
+            user = create_account()
+            if user is not None:
+                logged_in(user)
+            break
+        elif choice == "2":
+            user = login()
+            if user is not None:
+                logged_in(user)
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
 def create_account():
+    connection = sqlite3.connect('database.db')
+    cursor = connection.cursor()
     name = input("Set your account name: ")
-    if name not in user_names and name != "":
-        user = User(name)
-    else:
-        name2 = input("This username is already in use. Please enter a different username: ")
-        return create_account(name2)
-    if user is not None:
+    password = input("Set your account password: ")
+    cursor.execute("SELECT name FROM users WHERE name=?", (name,))
+    result = cursor.fetchone()
+    if result is None and name != "":
+        user = User(name, password)
         print("Account created successfully!")
         print("Account name:", user.name)
     else:
-        print("Account creation failed.")
+        print("This username is already in use or invalid. Please enter a different username.")
+        connection.close()
+        return create_account()
+    connection.close()
     return user
 
-#MENU
-def start_menu(user):
-    q1 = input("What do you want to do? \nPress 'M' to go on market, press 'A' to go on your account, press 'E' to exit\n")
-    if q1.lower() == "m":
+
+def login():
+    connection = sqlite3.connect('database.db')
+    cursor = connection.cursor()
+    name = input("Enter your account name: ")
+    password = input("Enter your account password: ")
+    cursor.execute("SELECT name, password, wallet, saldo, transactions, invested_money, withdrawal_money FROM users WHERE name=?", (name,))
+    result = cursor.fetchone()
+    connection.close()
+
+    if result is not None and bcrypt.checkpw(password.encode(), result[1]):
+        print("Login successful!")
+        user = User(result[0], password, deposit=result[2])
+        user.saldo = result[3]
+        user.invested_money = result[5]
+        user.withdrawal_money = result[6]
+        
+        user.wallet = json.loads(result[2])
+        user.transactions = json.loads(result[4])
+        
+        return user
+    else:
+        print("Invalid username or password.")
+        return login()
+
+#USERS ACTIONS
+def logged_in(user):
+    user_choice = input("What do you want to do?\nPress 'M' to go to the market, 'A' to go to your account, or 'E' to exit: ")
+    if user_choice.lower() == "m":
         market(user)
-    elif q1.lower() == "a":
+    elif user_choice.lower() == "a":
         moving_around_account(user)
-    elif q1.lower() == "e":
+    elif user_choice.lower() == "e":
+        user.update_user_data()
         print("Thanks for visiting Hashira Exchange!\n Hope we'll see you soon!")
+        sys.exit()
 
 
+def logged_in(user):
+    while True:
+        print("Available options:")
+        print("M: Go to the market")
+        print("A: Go to your account")
+        print("E: Exit")
+        user_choice = input("What do you want to do? Enter your choice: ")
+
+        if user_choice.lower() == "m":
+            market(user)
+            break
+        elif user_choice.lower() == "a":
+            moving_around_account(user)
+            break
+        elif user_choice.lower() == "e":
+            user.update_user_data()
+            print("Thanks for visiting Hashira Exchange!\nHope to see you again soon!")
+            sys.exit()
+        else:
+            print("Invalid choice. Please try again.")
 
 #MOVING AROUND ACCOUNT
 def moving_around_account(user):
@@ -66,8 +137,9 @@ def moving_around_account(user):
         elif account_menu.lower() == "b":
             user.check_balance()
         elif account_menu.lower() == "e":
+            user.update_user_data()
             print("Thanks for visiting Hashira Exchange!\nHope we'll see you soon!")
-            break
+            sys.exit()
 
 
 #MOVING AROUND MARKET
@@ -90,8 +162,9 @@ def market(user):
         elif market_menu.lower() == "a":
             moving_around_account(user)
         elif market_menu.lower() == "e":
+            user.update_user_data()
             print("Thanks for visiting Hashira Exchange!\nHope we'll see you soon!")
-            break
+            sys.exit()
 
 
 #BUY SHARES
@@ -104,7 +177,7 @@ def buy_shares(user):
             break
     if shares_to_buy.lower() != "x":
         amount_of_shares = input("Enter the number of shares you wish to buy: ")
-        user.buy_shares(stocks[q1], amount_of_shares)
+        user.buy_shares(stocks[shares_to_buy], amount_of_shares)
 
 
 #SELL SHARES
@@ -131,7 +204,7 @@ def check_share(user):
     shares_to_check = input("Enter the symbol of the action you wish to check: ")
     while shares_to_check not in stocks:
         shares_to_check = input("Enter a valid symbol or 'X' to exit checking: ")
-        if qshares_to_check.lower() == "x":
+        if shares_to_check.lower() == "x":
             break
     if shares_to_check.lower() != "x":
         c_stock = stocks[shares_to_check]
@@ -144,3 +217,38 @@ def check_share(user):
         next_step = input("Do you want to check other actions [press 'O'] or return to the menu ['press anything else']? ")
         if next_step.lower() == "o":
             check_share(user)
+
+
+def courses_update(stocks_dict):
+    for key, value in stocks_dict.items():
+        stocks_dict[key]['price'] = stocks_dict[key]['price'] * uniform(0.9, 1.1)
+    print("The prices on the exchange have been updated!")
+    display_stocks(stocks_dict)
+    for stock in stocks.values():
+        stock.update_course()
+
+
+def initialize_stocks():
+    connection = sqlite3.connect('database.db')
+    
+    with connection:
+        cursor = connection.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS stocks
+                            (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            short_name TEXT NOT NULL UNIQUE,
+                            company_name TEXT NOT NULL UNIQUE,
+                            current_price REAL,
+                            cours_history TEXT,
+                            transactions TEXT,
+                            purchasing_amount REAL,
+                            purchasing_quantity INTEGER,
+                            sales_amount REAL,
+                            sales_quantity INTEGER,
+                            purchasing_ratio REAL,
+                            sales_ratio REAL)''')
+        for name in stocks_dict:
+            stock = Stock(name)
+            stock.restore_state()
+            stocks[name] = stock
+
+    connection.close()

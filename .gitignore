@@ -27,3 +27,9 @@ bower_components/
 # Data files and credentials
 data/
 credentials.json
+
+# Secret data
+*.db
+
+# Not ready
+bin.py

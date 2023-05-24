@@ -1,18 +1,31 @@
+import bcrypt
+import sqlite3
+import json
 from datetime import datetime
 import matplotlib.pyplot as plt
 from stocks import stocks_dict
 stocks = {}
-user_names = []
+users = {}
 
 class User:
-    def __init__(self, name, deposit=10000):
+    def __init__(self, name, password, deposit=10000):
         self.name = name
+        self.password = self._hash_password(password)
         self.wallet = {"USD": deposit}
         self.saldo = 0
-        self.transactions = [[datetime.now(), "USD", deposit, deposit, "D"]]
+        self.transactions = [[datetime.now().isoformat(), "USD", deposit, deposit, "D"]]
         self.invested_money = deposit
         self.withdrawal_money = 0
-        user_names.append(self)
+        self.update_user_data()
+        users[self.name] = self
+    
+    def _hash_password(self, password):
+        hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+        return hashed_password
+
+    def verify_password(self, password):
+        return bcrypt.checkpw(password.encode(), self.password)
+
 
     def calculate_saldo(self):
         self.saldo = 0
@@ -37,7 +50,7 @@ class User:
         if total_cost > self.wallet["USD"]:
             print("You don't have enough money to buy that many shares")
         else:
-            timestamp = datetime.now()
+            timestamp = datetime.now().isoformat()
             self.transactions.append([timestamp, stock.short_name, number_of_shares, total_cost, "P"])
             self.wallet[stock.short_name] = self.wallet.get(stock.short_name, 0) + number_of_shares
             self.wallet["USD"] -= total_cost
@@ -57,7 +70,7 @@ class User:
         elif number_of_shares > self.wallet[stock.short_name]:
             print("You do not have enough shares.")
         else:
-            timestamp = datetime.now()
+            timestamp = datetime.now().isoformat()
             selling_price = number_of_shares * stock_info["price"]
             self.transactions.append([timestamp, stock.short_name, number_of_shares, selling_price, "S"])
             self.wallet[stock.short_name] = self.wallet.get(stock.short_name, 0) - number_of_shares
@@ -91,7 +104,7 @@ class User:
         amount = int(amount)
         self.wallet["USD"] += (amount)
         self.invested_money += amount
-        self.transactions.append([datetime.now(), "USD", amount, amount, "D"])
+        self.transactions.append([datetime.now().isoformat(), "USD", amount, amount, "D"])
         print(f"You have deposited ${amount} into your account")
     
 
@@ -103,7 +116,7 @@ class User:
         else:
             self.wallet["USD"] -= amount
             self.withdrawal_money += amount
-            self.transactions.append([datetime.now(), "USD", amount, amount, "W"])
+            self.transactions.append([datetime.now().isoformat(), "USD", amount, amount, "W"])
             print(f"You have withdrawn ${amount} from your account")
     
 
@@ -171,41 +184,101 @@ class User:
             print(f"In total, you have a balance of zero on the tranzactions (Money deposited: {self.invested_money}, Money paid out: {self.withdrawal_money}, Value of portfolio: {self.saldo}).")
 
 
+    def update_user_data(self):
+        transactions_json = json.dumps(self.transactions)
+        wallet_json = json.dumps(self.wallet)
+
+        connection = sqlite3.connect('database.db')
+        cursor = connection.cursor()
+        user_data = (self.name, self.password, wallet_json, self.saldo,
+                     transactions_json, self.invested_money, self.withdrawal_money)
+        cursor.execute('UPDATE users SET password=?, wallet=?, saldo=?, transactions=?, invested_money=?, withdrawal_money=? WHERE name=?', user_data)
+        connection.commit()
+        connection.close()
+
+
 class Stock:
     def __init__(self, name):
         self.short_name = name
         self.company_name = stocks_dict[name]['company_name']
         self.current_price = stocks_dict[name]['price']
-        self.cours_history = [[datetime.now(), self.current_price]]
-        stocks[self.short_name] = self
+        self.cours_history = [[datetime.now().isoformat(), self.current_price]]
         self.transactions = []
         self.purchasing_amount = [self.current_price, 1]
         self.sales_amount = [self.current_price, 1]
         self.purchasing_ratio = self.purchasing_amount[0] / self.purchasing_amount[1]
         self.sales_ratio = self.sales_amount[0] / self.sales_amount[1]
 
+        self.connection = sqlite3.connect('database.db')
+        self.restore_state()
+
+        stocks[self.short_name] = self
+
     def __repr__(self):
         return "Company {} ({}) shares. The current price is ${}.".format(self.company_name, self.short_name, self.current_price)
     
+    def restore_state(self):
+        with self.connection:
+            cursor = self.connection.cursor()
+            cursor.execute('SELECT * FROM stocks WHERE short_name=?', (self.short_name,))
+            stock_data = cursor.fetchone()
+
+            if stock_data:
+                transactions = json.loads(stock_data[5])
+                cours_history = [[datetime.fromisoformat(entry[0]), entry[1]] for entry in json.loads(stock_data[4])]
+
+                self.current_price = stock_data[3]
+                self.cours_history = cours_history
+                self.transactions = transactions
+                self.purchasing_amount = [stock_data[6], stock_data[7]]
+                self.sales_amount = [stock_data[8], stock_data[9]]
+                self.purchasing_ratio = stock_data[10]
+                self.sales_ratio = stock_data[11]
+
+    def save_state(self):
+        cours_history_json = json.dumps(self.cours_history)
+        transactions_json = json.dumps(self.transactions)
+
+        with self.connection:
+            cursor = self.connection.cursor()
+            cursor.execute('INSERT OR REPLACE INTO stocks (short_name, company_name, current_price, cours_history, transactions, purchasing_amount, purchasing_quantity, sales_amount, sales_quantity, purchasing_ratio, sales_ratio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                           (self.short_name, self.company_name, self.current_price, cours_history_json, transactions_json, self.purchasing_amount[0], self.purchasing_amount[1], self.sales_amount[0], self.sales_amount[1], self.purchasing_ratio, self.sales_ratio))
+
     def update_course(self):
         self.current_price = stocks_dict[self.short_name]['price']
-        self.cours_history.append([datetime.now(), self.current_price])
+        self.cours_history.append([datetime.now().isoformat(), self.current_price])
+
+        cours_history_json = json.dumps(self.cours_history)
+
+        with self.connection:
+            cursor = self.connection.cursor()
+            cursor.execute('UPDATE stocks SET cours_history=? WHERE short_name=?',
+                           (cours_history_json, self.short_name))
 
     def purchased(self, amount, price):
         self.transactions.append([amount, price, "P"])
         self.purchasing_amount[0] += amount * price
         self.purchasing_amount[1] += amount
 
+        with self.connection:
+            cursor = self.connection.cursor()
+            cursor.execute('UPDATE stocks SET purchasing_amount=?, purchasing_quantity=? WHERE short_name=?',
+                           (self.purchasing_amount[0], self.purchasing_amount[1], self.short_name))
+
     def sold(self, amount, price):
         self.transactions.append([amount, price, "S"])
         self.sales_amount[0] += amount * price
         self.sales_amount[1] += amount
 
+        with self.connection:
+            cursor = self.connection.cursor()
+            cursor.execute('UPDATE stocks SET sales_amount=?, sales_quantity=? WHERE short_name=?',
+                           (self.sales_amount[0], self.sales_amount[1], self.short_name))
+
     def generate_plot(self):
-    # Separation of dates and prices from cours_history
         dates = [entry[0] for entry in self.cours_history]
         prices = [entry[1] for entry in self.cours_history]
-        # Generation of a graph
+
         plt.plot(dates, prices)
         plt.xlabel('Date')
         plt.ylabel('Price')
