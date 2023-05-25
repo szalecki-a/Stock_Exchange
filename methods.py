@@ -22,6 +22,7 @@ def start_menu():
     while True:
         print("1. Create an account")
         print("2. Login")
+        print("3. Exit")
         choice = input("Enter your choice: ")
 
         if choice == "1":
@@ -34,51 +35,60 @@ def start_menu():
             if user is not None:
                 logged_in(user)
             break
+        elif choice == "3":
+            print("Thanks for visiting Hashira Exchange!\n Hope we'll see you soon!")
+            sys.exit()
         else:
             print("Invalid choice. Please try again.")
 
 def create_account():
     connection = sqlite3.connect('database.db')
     cursor = connection.cursor()
-    name = input("Set your account name: ")
-    password = input("Set your account password: ")
-    cursor.execute("SELECT name FROM users WHERE name=?", (name,))
-    result = cursor.fetchone()
-    if result is None and name != "":
-        user = User(name, password)
-        print("Account created successfully!")
-        print("Account name:", user.name)
+    name = input("Set your account name: (type 'exit' if you want to return to the main menu)  ")
+    if name == "exit":
+        start_menu()
     else:
-        print("This username is already in use or invalid. Please enter a different username.")
+        password = input("Set your account password: ")
+        cursor.execute("SELECT name FROM users WHERE name=?", (name,))
+        result = cursor.fetchone()
+        if result is None and name != "":
+            user = User(name, password)
+            print("Account created successfully!")
+            print("Account name:", user.name)
+        else:
+            print("This username is already in use or invalid. Please enter a different username.")
+            connection.close()
+            return create_account()
         connection.close()
-        return create_account()
-    connection.close()
-    return user
+        return user
 
 
 def login():
     connection = sqlite3.connect('database.db')
     cursor = connection.cursor()
-    name = input("Enter your account name: ")
-    password = input("Enter your account password: ")
-    cursor.execute("SELECT name, password, wallet, saldo, transactions, invested_money, withdrawal_money FROM users WHERE name=?", (name,))
-    result = cursor.fetchone()
-    connection.close()
-
-    if result is not None and bcrypt.checkpw(password.encode(), result[1]):
-        print("Login successful!")
-        user = User(result[0], password, deposit=result[2])
-        user.saldo = result[3]
-        user.invested_money = result[5]
-        user.withdrawal_money = result[6]
-        
-        user.wallet = json.loads(result[2])
-        user.transactions = json.loads(result[4])
-        
-        return user
+    name = input("Enter your account name: (type 'exit' if you want to return to the main menu)  ")
+    if name == "exit":
+        start_menu()
     else:
-        print("Invalid username or password.")
-        return login()
+        password = input("Enter your account password: ")
+        cursor.execute("SELECT name, password, wallet, saldo, transactions, invested_money, withdrawal_money FROM users WHERE name=?", (name,))
+        result = cursor.fetchone()
+        connection.close()
+
+        if result is not None and bcrypt.checkpw(password.encode(), result[1]):
+            print("Login successful!")
+            user = User(result[0], password, deposit=result[2])
+            user.saldo = result[3]
+            user.invested_money = result[5]
+            user.withdrawal_money = result[6]
+            
+            user.wallet = json.loads(result[2])
+            user.transactions = json.loads(result[4])
+            
+            return user
+        else:
+            print("Invalid username or password.")
+            return login()
 
 #USERS ACTIONS
 def logged_in(user):
@@ -208,6 +218,7 @@ def check_share(user):
             break
     if shares_to_check.lower() != "x":
         c_stock = stocks[shares_to_check]
+        c_stock.restore_state()
         print(c_stock)
         print()
         print("Purchasing ratio: " + str(c_stock.purchasing_ratio))
@@ -252,3 +263,7 @@ def initialize_stocks():
             stocks[name] = stock
 
     connection.close()
+
+
+
+stock_exchange()

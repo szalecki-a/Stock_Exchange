@@ -1,27 +1,91 @@
-name: Stock Exchange Test
+- name: Unit Tests
+  script:
+    - import bcrypt
+    - import sqlite3
+    - import json
+    - from datetime import datetime
+    - import matplotlib.pyplot as plt
+    - from stocks import stocks_dict
+    - from main import User, Stock, stocks, users
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  tests:
+    - name: Test User Initialization
+      commands:
+        - users.clear()
+        - stocks.clear()
+        - user = User("John", "password")
+        - assert user.name == "John"
+        - assert bcrypt.checkpw("password".encode(), user.password)
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-      
-    - name: Setup Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
+    - name: Test User Wallet
+      commands:
+        - user = User("John", "password")
+        - assert user.wallet == {"USD": 10000}
+        - assert user.saldo == 0
+        - user.buy_shares(stock, 5)
+        - assert user.wallet == {"USD": 9500, "AAPL": 5}
+        - assert user.saldo == 500
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+    - name: Test Stock Initialization
+      commands:
+        - stocks.clear()
+        - stock = Stock("AAPL")
+        - assert stock.short_name == "AAPL"
+        - assert stock.company_name == "Apple Inc."
+        - assert stock.current_price == stocks_dict["AAPL"]["price"]
 
-    - name: Run tests
-      run: python -m unittest discover
+    - name: Test Stock Course Update
+      commands:
+        - stock = Stock("AAPL")
+        - price_before = stock.current_price
+        - stock.update_course()
+        - assert stock.current_price != price_before
+        - assert len(stock.cours_history) > 0
+
+    - name: Test Buy and Sell Shares
+      commands:
+        - users.clear()
+        - stocks.clear()
+        - user = User("John", "password")
+        - stock = Stock("AAPL")
+        - user.buy_shares(stock, 5)
+        - assert user.wallet == {"USD": 9500, "AAPL": 5}
+        - assert user.saldo == 500
+        - user.sell_shares(stock, 2)
+        - assert user.wallet == {"USD": 10500, "AAPL": 3}
+        - assert user.saldo == 300
+
+    - name: Test User Deposit and Withdrawal
+      commands:
+        - user = User("John", "password")
+        - user.make_deposit(5000)
+        - assert user.wallet == {"USD": 15000}
+        - assert user.invested_money == 15000
+        - user.make_withdrawal(3000)
+        - assert user.wallet == {"USD": 12000}
+        - assert user.withdrawal_money == 3000
+
+    - name: Test User History
+      commands:
+        - user = User("John", "password")
+        - stock = Stock("AAPL")
+        - user.buy_shares(stock, 5)
+        - user.sell_shares(stock, 2)
+        - user.check_history("p")
+        - user.check_history("s")
+        - user.check_history("b")
+        - user.check_history("d")
+        - user.check_history("w")
+
+    - name: Test User Balance
+      commands:
+        - user = User("John", "password")
+        - stock = Stock("AAPL")
+        - user.buy_shares(stock, 5)
+        - user.sell_shares(stock, 2)
+        - user.check_balance()
+
+    - name: Test Stock Plot
+      commands:
+        - stock = Stock("AAPL")
+        - stock.generate_plot()

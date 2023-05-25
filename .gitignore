@@ -30,6 +30,7 @@ credentials.json
 
 # Secret data
 *.db
+tcp_connection.py
 
-# Not ready
-bin.py
+# dirtscript
+dirtscript.py

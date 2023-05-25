@@ -1,7 +1,13 @@
-import socket
-import sqlite3
-from clases import Stock, User, stocks, users
-from methods import courses_update, greet, start_menu, create_account, stock_exchange
-
+from tcp_connection import HOST, PORT, start_connections, service_connection, sel
+from methods import stock_exchange
 
 stock_exchange()
+
+start_connections(HOST, PORT, 5)
+
+while True:
+    events = sel.select(timeout=None)
+    for key, mask in events:
+        if key.data is None:
+            continue
+        service_connection(key, mask)
