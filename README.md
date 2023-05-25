@@ -10,7 +10,7 @@ Hashira Exchange is an application that allows you to simulate stock market acti
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your_username/repo_name.git
+   git clone https://github.com/szalecki-a/Stock_Exchange
    ```
 
 2. Navigate to the project directory:
